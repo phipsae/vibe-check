@@ -3,57 +3,166 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Loading</title>
+    <title>Vibe Check</title>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        margin: 0;
-        background-color: #f5f5f5;
+      * {
+        box-sizing: border-box;
       }
-      .loader-wrapper {
-        text-align: center;
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        color: white;
+        background: linear-gradient(135deg, #6a6ad3 0%, #7d67d9 60%, #9264d5 100%);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
       }
       h1 {
-        font-size: 2rem;
-        color: #333;
-        margin-bottom: 20px;
-      }
-      .content-img {
-        max-width: 300px;
-        height: auto;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      }
-      .loader-container {
+        font-size: clamp(2rem, 6vw, 3.5rem);
+        font-weight: 800;
+        margin: 0 0 10px 0;
+        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         text-align: center;
       }
-      .loader {
-        display: inline-block;
-        width: 80px;
-        height: 80px;
+      .sub {
+        font-size: 1.1rem;
+        opacity: 0.95;
+        margin: 0 0 30px 0;
+        text-align: center;
       }
-      .loader:after {
-        content: " ";
+      .sub .tag {
+        opacity: 0.8;
+      }
+      .card {
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 24px;
+        padding: 30px;
+        width: 100%;
+        max-width: 620px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      }
+      .buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      .btn {
+        font-size: 1.4rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 22px 10px;
+        border: none;
+        border-radius: 16px;
+        color: white;
+        cursor: pointer;
+        transition: transform 0.1s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        font-family: inherit;
+      }
+      .btn.good {
+        background: linear-gradient(180deg, #7dce6f 0%, #5ab94a 100%);
+        box-shadow: 0 0 30px rgba(125, 206, 111, 0.4),
+          0 8px 20px rgba(0, 0, 0, 0.15);
+      }
+      .btn.bad {
+        background: linear-gradient(180deg, #f0886b 0%, #e86949 100%);
+        box-shadow: 0 0 30px rgba(240, 136, 107, 0.4),
+          0 8px 20px rgba(0, 0, 0, 0.15);
+      }
+      .btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        filter: brightness(1.05);
+      }
+      .btn:active:not(:disabled) {
+        transform: translateY(0);
+      }
+      .btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .results {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 24px;
+      }
+      .result {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+        padding: 18px 16px;
+        text-align: center;
+      }
+      .result .label {
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        opacity: 0.9;
+        margin-bottom: 8px;
+      }
+      .result .value {
+        font-size: 1.8rem;
+        font-weight: 800;
+      }
+      .error-toast {
+        margin-top: 16px;
+        background: rgba(255, 90, 90, 0.18);
+        border: 1px solid rgba(255, 120, 120, 0.5);
+        color: #ffd6d6;
+        padding: 12px 14px;
+        border-radius: 10px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.9rem;
+        text-align: left;
+        display: none;
+      }
+      .error-toast.visible {
         display: block;
-        width: 64px;
-        height: 64px;
-        margin: 8px;
-        border-radius: 50%;
-        border: 6px solid #808080;
-        border-color: #808080 transparent #808080 transparent;
-        animation: loader 1.2s linear infinite;
+        animation: shake 0.3s ease;
       }
-      @keyframes loader {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
+      .error-toast .code {
+        opacity: 0.7;
+        font-size: 0.75rem;
+        letter-spacing: 1px;
+        margin-bottom: 2px;
+      }
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-4px); }
+        75% { transform: translateX(4px); }
+      }
+      .total {
+        margin-top: 20px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 14px;
+        text-align: center;
+        font-size: 1rem;
+      }
+      .total strong {
+        font-size: 1.2rem;
+      }
+      .hint {
+        margin-top: 16px;
+        text-align: center;
+        font-style: italic;
+        opacity: 0.9;
+      }
+      .disclaimer {
+        margin-top: 14px;
+        font-size: 0.75rem;
+        opacity: 0.55;
+        text-align: center;
+        max-width: 620px;
       }
       .qr-code {
         position: fixed;
@@ -70,75 +179,154 @@
         position: fixed;
         top: 20px;
         right: 20px;
-        background-color: #808080;
+        background: rgba(0, 0, 0, 0.25);
         color: white;
-        padding: 10px 15px;
+        padding: 8px 14px;
         border-radius: 20px;
-        font-weight: bold;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        font-weight: 700;
+        backdrop-filter: blur(8px);
       }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
   </head>
   <body>
-    <div class="loader-wrapper">
-      <h1>loading...</h1>
-      <div class="loader-container">
-        <div class="loader"></div>
+    <h1>🌊 Vibe Check</h1>
+    <p class="sub">
+      how's the vibe? <span class="tag">(tap honestly ✨)</span>
+    </p>
+
+    <section class="card">
+      <div class="buttons">
+        <button id="btn-good" class="btn good">😊 GOOD</button>
+        <button id="btn-bad" class="btn bad">😔 BAD</button>
       </div>
-    </div>
 
-    <div class="qr-code" id="qr-code-container">
-      <!-- QR code will be generated here -->
-    </div>
+      <div class="results">
+        <div class="result">
+          <div class="label">GOOD VIBES</div>
+          <div class="value" id="good-pct">0%</div>
+        </div>
+        <div class="result">
+          <div class="label">BAD VIBES</div>
+          <div class="value" id="bad-pct">0%</div>
+        </div>
+      </div>
 
+      <div class="total">Total Votes: <strong id="total">0</strong></div>
+      <div class="hint" id="hint">Cast your vote above!</div>
+
+      <div class="error-toast" id="error-toast">
+        <div class="code" id="error-code">ERROR</div>
+        <div id="error-message"></div>
+      </div>
+    </section>
+
+    <div class="qr-code" id="qr-code-container"></div>
     <div class="user-counter" id="user-counter">👥 1</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      // Generate QR code with client-side library
       function generateQRCode() {
-        const qrContainer = document.getElementById("qr-code-container");
-        const currentUrl = window.location.href;
-
-        // Create QR code using the library - using version 1 with L error correction for simple URLs
+        const container = document.getElementById("qr-code-container");
         const qr = qrcode(3, "L");
-        qr.addData(currentUrl);
+        qr.addData(window.location.href);
         qr.make();
-
-        // Create SVG QR code
-        qrContainer.innerHTML = qr.createSvgTag({
-          cellSize: 5,
-          margin: 4,
-        });
-
-        // Adjust size of the SVG element
-        const svgElement = qrContainer.querySelector("svg");
-        svgElement.setAttribute("width", "100px");
-        svgElement.setAttribute("height", "100px");
+        container.innerHTML = qr.createSvgTag({ cellSize: 5, margin: 4 });
+        const svg = container.querySelector("svg");
+        svg.setAttribute("width", "100px");
+        svg.setAttribute("height", "100px");
       }
-
-      // Generate QR code on page load
       window.addEventListener("load", generateQRCode);
 
-      const socket = io();
+      const urlParams = new URLSearchParams(window.location.search);
+      const storedId = urlParams.get("userId") || localStorage.getItem("userId");
+      const socket = io({ query: storedId ? { userId: storedId } : {} });
 
-      // Update user count when received from server
-      socket.on("userCount", (count) => {
-        document.getElementById("user-counter").textContent = `👥 ${count}`;
+      socket.on("userId", (id) => localStorage.setItem("userId", id));
+      socket.on("userCount", (c) => {
+        document.getElementById("user-counter").textContent = `👥 ${c}`;
+      });
+      socket.on("reload", () => window.location.reload());
+      socket.on("disconnect", () =>
+        setTimeout(() => window.location.reload(), 1000)
+      );
+      setInterval(() => socket.emit("ping"), 30000);
+
+      const goodBtn = document.getElementById("btn-good");
+      const badBtn = document.getElementById("btn-bad");
+      const hint = document.getElementById("hint");
+      const totalEl = document.getElementById("total");
+      const goodPctEl = document.getElementById("good-pct");
+      const badPctEl = document.getElementById("bad-pct");
+      const errorToast = document.getElementById("error-toast");
+      const errorCode = document.getElementById("error-code");
+      const errorMessage = document.getElementById("error-message");
+
+      let hasVoted = false;
+      let votePending = false;
+      let errorTimer = null;
+
+      function lockButtons(message) {
+        goodBtn.disabled = true;
+        badBtn.disabled = true;
+        if (message) hint.textContent = message;
+      }
+
+      function unlockButtons(message) {
+        if (hasVoted) return;
+        goodBtn.disabled = false;
+        badBtn.disabled = false;
+        votePending = false;
+        if (message) hint.textContent = message;
+      }
+
+      function showError(code, message) {
+        errorCode.textContent = `[${code}]`;
+        errorMessage.textContent = message;
+        errorToast.classList.remove("visible");
+        // re-trigger the shake animation
+        void errorToast.offsetWidth;
+        errorToast.classList.add("visible");
+        clearTimeout(errorTimer);
+        errorTimer = setTimeout(() => {
+          errorToast.classList.remove("visible");
+        }, 4000);
+      }
+
+      goodBtn.addEventListener("click", () => {
+        if (hasVoted || votePending) return;
+        votePending = true;
+        lockButtons("Submitting your vibe...");
+        socket.emit("vote", "good");
       });
 
-      socket.on("reload", () => {
-        console.log("Reloading page...");
-        window.location.reload();
+      badBtn.addEventListener("click", () => {
+        if (hasVoted || votePending) return;
+        socket.emit("vote", "bad");
       });
 
-      // Handle disconnection events
-      socket.on("disconnect", () => {
-        console.log("Disconnected from server, will reload in 1 second...");
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+      socket.on("voteError", ({ code, message }) => {
+        showError(code, message);
+        unlockButtons("That vote could not be recorded. Try again in a moment.");
+      });
+
+      socket.on("voteState", ({ hasVoted: already }) => {
+        if (already) {
+          votePending = false;
+          hasVoted = true;
+          lockButtons("Your vibe is locked in. Thank you.");
+        } else if (!votePending) {
+          hasVoted = false;
+          unlockButtons("Cast your vote above!");
+        }
+      });
+
+      socket.on("tally", ({ good, bad, total }) => {
+        totalEl.textContent = total;
+        const goodPct = total === 0 ? 0 : Math.round((good / total) * 100);
+        const badPct = total === 0 ? 0 : Math.round((bad / total) * 100);
+        goodPctEl.textContent = `${goodPct}%`;
+        badPctEl.textContent = `${badPct}%`;
       });
     </script>
   </body>
