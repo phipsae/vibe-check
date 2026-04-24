@@ -360,7 +360,8 @@
       }
 
       function startSocketMode() {
-        if (typeof window.io !== "function") {
+        const isVercelHost = window.location.hostname.endsWith(".vercel.app");
+        if (isVercelHost || typeof window.io !== "function") {
           startApiMode();
           return;
         }
