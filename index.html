@@ -238,20 +238,6 @@
       }
       window.addEventListener("load", generateQRCode);
 
-      const urlParams = new URLSearchParams(window.location.search);
-      const storedId = urlParams.get("userId") || localStorage.getItem("userId");
-      const socket = io({ query: storedId ? { userId: storedId } : {} });
-
-      socket.on("userId", (id) => localStorage.setItem("userId", id));
-      socket.on("userCount", (c) => {
-        document.getElementById("user-counter").textContent = `👥 ${c}`;
-      });
-      socket.on("reload", () => window.location.reload());
-      socket.on("disconnect", () =>
-        setTimeout(() => window.location.reload(), 1000)
-      );
-      setInterval(() => socket.emit("ping"), 30000);
-
       const goodBtn = document.getElementById("btn-good");
       const badBtn = document.getElementById("btn-bad");
       const hint = document.getElementById("hint");
@@ -261,10 +247,18 @@
       const errorToast = document.getElementById("error-toast");
       const errorCode = document.getElementById("error-code");
       const errorMessage = document.getElementById("error-message");
+      const userCounter = document.getElementById("user-counter");
+      const apiUrl = "/api/vibe";
+      const urlParams = new URLSearchParams(window.location.search);
+      const storedId = urlParams.get("userId") || localStorage.getItem("userId");
 
+      let userId = storedId || "";
       let hasVoted = false;
       let votePending = false;
       let errorTimer = null;
+      let socket = null;
+      let apiModeStarted = false;
+      let pollTimer = null;
 
       function lockButtons(message) {
         goodBtn.disabled = true;
@@ -293,24 +287,16 @@
         }, 4000);
       }
 
-      goodBtn.addEventListener("click", () => {
-        if (hasVoted || votePending) return;
-        votePending = true;
-        lockButtons("Submitting your vibe...");
-        socket.emit("vote", "good");
-      });
+      function ensureUserId(id) {
+        userId =
+          id ||
+          userId ||
+          `user-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+        localStorage.setItem("userId", userId);
+        return userId;
+      }
 
-      badBtn.addEventListener("click", () => {
-        if (hasVoted || votePending) return;
-        socket.emit("vote", "bad");
-      });
-
-      socket.on("voteError", ({ code, message }) => {
-        showError(code, message);
-        unlockButtons("That vote could not be recorded. Try again in a moment.");
-      });
-
-      socket.on("voteState", ({ hasVoted: already }) => {
+      function applyVoteState({ hasVoted: already }) {
         if (already) {
           votePending = false;
           hasVoted = true;
@@ -319,15 +305,143 @@
           hasVoted = false;
           unlockButtons("Cast your vote above!");
         }
-      });
+      }
 
-      socket.on("tally", ({ good, bad, total }) => {
+      function applyTally({ good, bad, total }) {
         totalEl.textContent = total;
         const goodPct = total === 0 ? 0 : Math.round((good / total) * 100);
         const badPct = total === 0 ? 0 : Math.round((bad / total) * 100);
         goodPctEl.textContent = `${goodPct}%`;
         badPctEl.textContent = `${badPct}%`;
+      }
+
+      async function requestApi(options = {}) {
+        const method = options.method || "GET";
+        const url = new URL(apiUrl, window.location.origin);
+        if (method === "GET" && userId) {
+          url.searchParams.set("userId", userId);
+        }
+
+        const response = await fetch(url, {
+          method,
+          headers: method === "POST" ? { "Content-Type": "application/json" } : {},
+          body: method === "POST" ? JSON.stringify(options.body || {}) : undefined,
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          const error = new Error(data.message || "Request failed.");
+          error.code = data.code || response.status;
+          throw error;
+        }
+
+        return data;
+      }
+
+      async function refreshApiState() {
+        try {
+          const data = await requestApi();
+          ensureUserId(data.userId);
+          applyTally(data.tally);
+          applyVoteState({ hasVoted: data.hasVoted });
+          userCounter.textContent = "↻ Live";
+        } catch (error) {
+          userCounter.textContent = "Offline";
+        }
+      }
+
+      function startApiMode() {
+        if (apiModeStarted) return;
+        apiModeStarted = true;
+        ensureUserId(userId);
+        refreshApiState();
+        pollTimer = setInterval(refreshApiState, 2000);
+      }
+
+      function startSocketMode() {
+        if (typeof window.io !== "function") {
+          startApiMode();
+          return;
+        }
+
+        socket = io({ query: storedId ? { userId: storedId } : {} });
+
+        const fallbackTimer = setTimeout(() => {
+          if (!socket.connected) {
+            socket.close();
+            startApiMode();
+          }
+        }, 1500);
+
+        socket.on("connect", () => clearTimeout(fallbackTimer));
+        socket.on("connect_error", () => {
+          clearTimeout(fallbackTimer);
+          socket.close();
+          startApiMode();
+        });
+        socket.on("userId", ensureUserId);
+        socket.on("userCount", (c) => {
+          userCounter.textContent = `👥 ${c}`;
+        });
+        socket.on("reload", () => window.location.reload());
+        socket.on("disconnect", () => {
+          if (!apiModeStarted) {
+            setTimeout(() => window.location.reload(), 1000);
+          }
+        });
+        socket.on("voteError", ({ code, message }) => {
+          showError(code, message);
+          unlockButtons("That vote could not be recorded. Try again in a moment.");
+        });
+        socket.on("voteState", applyVoteState);
+        socket.on("tally", applyTally);
+        setInterval(() => socket.connected && socket.emit("ping"), 30000);
+      }
+
+      async function submitApiVote(choice) {
+        if (choice === "good") {
+          votePending = true;
+          lockButtons("Submitting your vibe...");
+        }
+
+        try {
+          const data = await requestApi({
+            method: "POST",
+            body: { choice, userId: ensureUserId(userId) },
+          });
+          ensureUserId(data.userId);
+          applyTally(data.tally);
+          applyVoteState({ hasVoted: data.hasVoted });
+        } catch (error) {
+          showError(error.code || "ERROR", error.message);
+          unlockButtons("That vote could not be recorded. Try again in a moment.");
+        }
+      }
+
+      goodBtn.addEventListener("click", () => {
+        if (hasVoted || votePending) return;
+        if (socket && socket.connected) {
+          votePending = true;
+          lockButtons("Submitting your vibe...");
+          socket.emit("vote", "good");
+          return;
+        }
+
+        submitApiVote("good");
       });
+
+      badBtn.addEventListener("click", () => {
+        if (hasVoted || votePending) return;
+        if (socket && socket.connected) {
+          socket.emit("vote", "bad");
+          return;
+        }
+
+        submitApiVote("bad");
+      });
+
+      startSocketMode();
     </script>
   </body>
 </html>
