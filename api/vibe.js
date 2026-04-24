@@ -46,6 +46,11 @@ function getUserId(req, body = {}) {
   );
 }
 
+function resetVibeCheck() {
+  goodVotes = 0;
+  voters.clear();
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
     res.setHeader("Allow", "GET, POST, OPTIONS");
@@ -55,6 +60,14 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === "GET") {
+    if (req.query?.reset === "1" || req.query?.action === "reset") {
+      resetVibeCheck();
+      res.statusCode = 303;
+      res.setHeader("Location", "/");
+      res.end();
+      return;
+    }
+
     const userId = getUserId(req);
     sendJson(res, 200, {
       userId,
@@ -79,8 +92,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (body.action === "reset") {
-    goodVotes = 0;
-    voters.clear();
+    resetVibeCheck();
     sendJson(res, 200, { tally: tally(), hasVoted: false });
     return;
   }
